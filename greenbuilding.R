@@ -15,7 +15,7 @@ mean(green_only$Rent)
 xbar = mean(green_only$Rent)
 sig_hat = sd(green_only$Rent)
 se_hat = sig_hat/sqrt(nrow(green_only))
-xbar + c(-1.96,1.96)*se_hat
+xbar + c(-1.96,1.96)*se_hat #95% confidence interval
 
 # Using R's lm function
 model1 = lm(Rent ~ 1, data=green_only)
@@ -48,14 +48,14 @@ xbar + c(-1.96,1.96)*se_hat
 # Bootstrap the median
 ####
 
-median(green_only$Rent)
+median(green_only$Rent) #median is slightly less than mean
 # Now repeat 2500 times
 boot2 = do(2500)*{
     median(resample(green_only)$Rent)
 }
 head(boot2)
 
-# Ugly!
+# Ugly! not a normal distribution at all.
 hist(boot2$result, 30)
 
 # But we still get a confidence interval
