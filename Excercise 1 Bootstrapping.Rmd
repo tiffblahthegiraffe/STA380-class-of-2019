@@ -1,0 +1,145 @@
+---
+title: "Excercise 1 Boostrapping"
+author: "Tiffany Sung"
+date: "8/6/2018"
+output: html_document
+---
+
+```{r}
+library(mosaic)
+library(quantmod)
+library(foreach)
+```
+
+```{r}
+# Import the five stocks
+mystocks = c("SPY", "TLT", "LQD", "EEM", "VNQ")
+myprices = getSymbols(mystocks, from = "2007-01-01")
+getSymbols(mystocks)
+
+# A chunk of code for adjusting all stocks
+# creates a new object addind 'a' to the end
+# For example, WMT becomes WMTa, etc
+for(ticker in mystocks) {
+
+  expr = paste0(ticker, "a = adjustOHLC(", ticker, ")")
+  eval(parse(text=expr))
+}
+
+# Combine all the returns in a matrix
+all_returns = cbind(ClCl(SPYa), ClCl(TLTa), ClCl(LQDa), ClCl(EEMa), ClCl(VNQa))
+all_returns = as.matrix(na.omit(all_returns))
+
+head(all_returns)
+```
+```{r}
+# Plot each versus the other for approximate correlation
+pairs(all_returns)
+# The sample correlation matrix
+cor(all_returns)
+```
+
+```{r}
+#The mean and variance
+apply(all_returns,2,mean)
+cat("\n\n")
+apply(all_returns,2,var)
+```
+
+```{r}
+par(mfrow=c(2,3))
+hist(all_returns[SPYa], 30, xlim=c(-0.04, 0.04))
+hist(all_returns[TLTa], 30, xlim=c(-0.04, 0.04))
+hist(all_returns[LQDa], 30, xlim=c(-0.04, 0.04))
+hist(all_returns[EEMa], 30, xlim=c(-0.04, 0.04))
+hist(all_returns[VNQa], 30, xlim=c(-0.04, 0.04))
+
+```
+
+```{r}
+initial_wealth = 100000
+sim_even_split = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = c(0.2, 0.2, 0.2, 0.2, 0.2)
+  holdings = weights * total_wealth
+  n_days = 20
+  wealthtracker = rep(0, n_days)
+  for(today in 1:n_days) {
+    return.today = resample(all_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+hist(sim_even_split[,n_days]- initial_wealth, breaks=30)
+```
+```{r}
+even_mean <- mean(sim_even_split[,n_days])
+even_return <- (mean(sim_even_split[,n_days])-100000)/100000
+even_5_perc <- quantile(sim_even_split[,n_days], 0.05) - initial_wealth
+
+# Print out results
+cat("For an even split investment of $100,000,\nAverage expected result:", even_mean, "\nAverage return on investment:", even_return, "\n5% value at risk:", even_5_perc)
+```
+
+```{r}
+# Now simulate many different possible scenarios when investing
+# over a 4-week (20 trading day) period
+initial_wealth = 100000
+sim_safe_split = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = c(0.2, 0.3, 0.5, 0, 0)
+  holdings = weights * total_wealth
+  n_days = 20
+  wealthtracker = rep(0, n_days)
+  for(today in 1:n_days) {
+    return.today = resample(all_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+hist(sim_safe_split[,n_days]- initial_wealth, breaks=30)
+```
+
+```{r}
+safe_mean <- mean(sim_safe_split[,n_days])
+safe_return <- (mean(sim_safe_split[,n_days])-100000)/100000
+safe_5_perc <- quantile(sim_safe_split[,n_days], 0.05) - initial_wealth
+
+# Print out results
+cat("For a portfolio investment of $100,000, split 20% SPY, 30% TLT, and 50% LQD,\nAverage expected result:", safe_mean, "\nAverage return on investment:", safe_return, "\n5% value at risk:", safe_5_perc)
+```
+
+```{r}
+# Now simulate many different possible scenarios when investing
+# over a 4-week (20 trading day) period
+initial_wealth = 100000
+sim_risky_split = foreach(i=1:5000, .combine='rbind') %do% {
+  total_wealth = initial_wealth
+  weights = c(0, 0, 0, 0.75, 0.25)
+  holdings = weights * total_wealth
+  n_days = 20
+  wealthtracker = rep(0, n_days)
+  for(today in 1:n_days) {
+    return.today = resample(all_returns, 1, orig.ids=FALSE)
+    holdings = holdings + holdings*return.today
+    total_wealth = sum(holdings)
+    wealthtracker[today] = total_wealth
+  }
+  wealthtracker
+}
+hist(sim_risky_split[,n_days]- initial_wealth, breaks=30)
+```
+
+```{r}
+risky_mean <- mean(sim_risky_split[,n_days])
+risky_return <- (mean(sim_risky_split[,n_days])-100000)/100000
+risky_5_perc <- quantile(sim_risky_split[,n_days], 0.05) - initial_wealth
+
+# Print out results
+cat("For a portfolio investment of $100,000, split 75% EEM and 25% VNQ,\nAverage expected result:", risky_mean, "\nAverage return on investment:", risky_return, "\n5% value at risk:", risky_5_perc)
+```
+

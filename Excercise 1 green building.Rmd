@@ -1,0 +1,71 @@
+---
+title: "Excercise 1 green building"
+author: "Tiffany Sung"
+date: "8/5/2018"
+output: html_document
+---
+
+read in data
+```{r}
+gb = read.csv(url('https://raw.githubusercontent.com/jgscott/STA380/master/data/greenbuildings.csv'))
+attach(gb)
+library(ggplot2)
+```
+
+change some columns to factors
+```{r}
+gb$renovated <- as.factor(gb$renovated)
+gb$class_a <-  as.factor(gb$class_a)
+gb$class_b <-  as.factor(gb$class_b)
+gb$LEED <-  as.factor(gb$LEED)
+gb$Energystar <-  as.factor(gb$Energystar)
+gb$green_rating <-  as.factor(gb$green_rating)
+gb$net <-  as.factor(gb$net)
+gb$amenities <-  as.factor(gb$amenities)
+```
+
+** Data Cleaning **
+There's outliers of leasing rate
+```{r}
+ggplot(gb, aes(x = gb$green_rating, y = gb$leasing_rate), fill = green_rating) +
+geom_boxplot(fill = "green") + labs(x = "Green Building", y = "Leasing Rate")+ theme_bw()
+```
+
+Also,we can only consider the rent withing certain range(size and age of the house)
+```{r}
+plot(gb$age, gb$size, main="Size and age of buildings in the dataset", xlab='Building age', ylab='Building size in Sq.Ft.')
+abline(v=0,lty=3, col='red')
+abline(v=20,lty=3, col='red')
+abline(h=100000,lty=3, col='red')
+abline(h=400000,lty=3, col='red')
+```
+
+
+Withdraw outliers that leasing rate < 10%
+Maybe add constraint of our observation within age<20 and size <400000 sqare feet
+```{r}
+mask = gb[!gb$leasing_rate <10,]
+#mask1 = mask[mask$size < 400000,]
+#mask2 = mask1[mask1$age < 20, ]
+mask$green_rating_type[mask$green_rating == 1] <- 'green'
+mask$green_rating_type[mask$green_rating == 0] <- 'not-green'
+mask$green_rating_type = as.factor(mask$green_rating_type)
+```
+
+** Plot to see the rent difference**
+```{r}
+ggplot(mask, aes(x = mask$green_rating_type, y = mask$Rent)) + geom_boxplot(fill = "purple") +labs(x = "Building", y = "Rent") +
+theme_bw()
+```
+```{r}
+ggplot(mask2,aes(x = mask2$green_rating_type,y = mask2$Rent)) + geom_boxplot(fill='yellow')+scale_y_continuous(limits = c(0,50))+ labs(x = "Building",y = "Rent") + theme_bw()
+```
+
+**Leasing Rate**
+Compare leasing rate within green and not-green house
+```{r}
+ggplot(mask, aes(x=mask$leasing_rate,color = green_rating_type))+geom_density()+geom_vline(aes(xintercept = median(mask$leasing_rate)),linetype = 'dashed')+labs(x='Leasing Rate')
+```
+
+** Gas Cost**
+** Electricity Cost**
