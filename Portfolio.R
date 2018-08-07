@@ -82,7 +82,7 @@ holdings = holdings*(1 + return.today) #holdings after 1 day investment
 total_wealth = sum(holdings) #you now got returns from day 1
 
 
-# Now loop over two trading weeks
+# Now loop over two trading weeks = 10 days
 total_wealth = 10000
 weights = c(0.2, 0.2, 0.2, 0.2, 0.2)
 holdings = weights * total_wealth
@@ -124,6 +124,7 @@ hist(sim1[,n_days], 25)
 
 # Profit/loss
 mean(sim1[,n_days])
+#This will be a distribution of you profit or loss by taking out the initial wealth
 hist(sim1[,n_days]- initial_wealth, breaks=30)
 
 # Calculate 5% value at risk
