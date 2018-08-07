@@ -4,9 +4,11 @@ library(foreach)
 
 # Import a few stocks
 mystocks = c("MRK", "JNJ", "SPY")
-getSymbols(mystocks)
+#pass the stock symbol (a factor of stream) to financial data to each ticker
+getSymbols(mystocks) 
 
 # Adjust for splits and dividends
+# adj price according to close price
 MRKa = adjustOHLC(MRK)
 JNJa = adjustOHLC(JNJ)
 SPYa = adjustOHLC(SPY)
@@ -17,6 +19,7 @@ plot(ClCl(MRKa))
 # Combine close to close changes in a single matrix
 all_returns = cbind(ClCl(MRKa),ClCl(JNJa),ClCl(SPYa))
 head(all_returns)
+#this matrix can be viewed as joint distributionbarChart(AAPL)
 all_returns = as.matrix(na.omit(all_returns))
 
 # These returns can be viewed as draws from the joint distribution
@@ -64,17 +67,19 @@ pairs(all_returns)
 
 # Sample a random return from the empirical joint distribution
 # This simulates a random day
+# Take only 1 sample
+# orig.ids = False just hoping not to get original data column
 return.today = resample(all_returns, 1, orig.ids=FALSE)
 
 # Update the value of your holdings
 # Assumes an equal allocation to each asset
 total_wealth = 10000
 my_weights = c(0.2,0.2,0.2, 0.2, 0.2)
-holdings = total_wealth*my_weights
-holdings = holdings*(1 + return.today)
+holdings = total_wealth*my_weights #holdings before investment
+holdings = holdings*(1 + return.today) #holdings after 1 day investment
 
 # Compute your new total wealth
-total_wealth = sum(holdings)
+total_wealth = sum(holdings) #you now got returns from day 1
 
 
 # Now loop over two trading weeks
@@ -82,6 +87,7 @@ total_wealth = 10000
 weights = c(0.2, 0.2, 0.2, 0.2, 0.2)
 holdings = weights * total_wealth
 n_days = 10
+#wealthtracker will have 10 days
 wealthtracker = rep(0, n_days) # Set up a placeholder to track total wealth
 for(today in 1:n_days) {
     return.today = resample(all_returns, 1, orig.ids=FALSE)
@@ -95,6 +101,9 @@ plot(wealthtracker, type='l')
 
 # Now simulate many different possible scenarios  
 initial_wealth = 10000
+#you got two loops
+#outer loop loop through trading day
+#innter loop do boostrapping 
 sim1 = foreach(i=1:5000, .combine='rbind') %do% {
     total_wealth = initial_wealth
     weights = c(0.2, 0.2, 0.2, 0.2, 0.2)
@@ -119,3 +128,4 @@ hist(sim1[,n_days]- initial_wealth, breaks=30)
 
 # Calculate 5% value at risk
 quantile(sim1[,n_days], 0.05) - initial_wealth
+initial_wealth - quantile(sim1[,n_days],0.05)
