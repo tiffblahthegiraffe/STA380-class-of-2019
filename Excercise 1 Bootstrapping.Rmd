@@ -32,6 +32,7 @@ all_returns = as.matrix(na.omit(all_returns))
 
 head(all_returns)
 ```
+
 ```{r}
 # Plot each versus the other for approximate correlation
 pairs(all_returns)
@@ -39,11 +40,12 @@ pairs(all_returns)
 cor(all_returns)
 ```
 
+From here, we can see that EEM, VNQ have relatively higher return, but higher risk consequently.
 ```{r}
 #The mean and variance
-apply(all_returns,2,mean)
-cat("\n\n")
-apply(all_returns,2,var)
+sort(apply(all_returns,2,mean),decreasing = TRUE)
+cat("\n")
+sort(apply(all_returns,2,var),decreasing = TRUE)
 ```
 
 ```{r}
@@ -56,40 +58,71 @@ hist(all_returns[VNQa], 30, xlim=c(-0.04, 0.04))
 
 ```
 
+**Evaluate Portfolio**
+```{r}
+get_return = function(initial_wealth,weights,all_returns){
+    sim_split = foreach(i = 1:5000, .combine = 'rbind') %do% {
+        total_wealth = initial_wealth
+        holdings = weights * total_wealth
+        n_days = 20
+        wealthtracker = rep(0, n_days)
+        for(today in 1:n_days) {
+            return.today = resample(all_returns, 1, orig.ids=FALSE)
+            holdings = holdings + holdings*return.today #p+r(stock)
+            total_wealth = sum(holdings)#p+r(portfolio)
+            wealthtracker[today] = total_wealth
+            holdings = total_wealth * weights #daily rebalance
+        }
+        data.frame(ts = all_returns[,1],return = wealthtracker)
+    }
+}  
+
+weight_uni = rep(0.2,5)
+get_return(100000,weight_uni,all_returns)
+```
+**Evenly Weighted Portfolio**
 ```{r}
 initial_wealth = 100000
 sim_even_split = foreach(i=1:5000, .combine='rbind') %do% {
   total_wealth = initial_wealth
-  weights = c(0.2, 0.2, 0.2, 0.2, 0.2)
+  weights = c(0.2, 0.2, 0.2, 0.2, 0.2) #seperate evenly
   holdings = weights * total_wealth
   n_days = 20
   wealthtracker = rep(0, n_days)
   for(today in 1:n_days) {
     return.today = resample(all_returns, 1, orig.ids=FALSE)
-    holdings = holdings + holdings*return.today
-    total_wealth = sum(holdings)
+    holdings = holdings + holdings*return.today #p+r(stock)
+    total_wealth = sum(holdings)#p+r(portfolio)
     wealthtracker[today] = total_wealth
+    holdings = total_wealth * weights #daily rebalance
   }
   wealthtracker
 }
-hist(sim_even_split[,n_days]- initial_wealth, breaks=30)
+#see the profit/loss spread
+even_hist = hist(sim_even_split[,n_days]- initial_wealth, breaks=30)
 ```
+
+```{r}
+ggplot(aes(even_return))
+```
+
 ```{r}
 even_mean <- mean(sim_even_split[,n_days])
-even_return <- (mean(sim_even_split[,n_days])-100000)/100000
+even_return <- (mean(sim_even_split[,n_days])-initial_wealth)/initial_wealth
 even_5_perc <- quantile(sim_even_split[,n_days], 0.05) - initial_wealth
 
 # Print out results
-cat("For an even split investment of $100,000,\nAverage expected result:", even_mean, "\nAverage return on investment:", even_return, "\n5% value at risk:", even_5_perc)
+cat("For an even split investment of $100,000,\nExpected holdings:", even_mean, "\nReturn Rate:", even_return, "\n5% VaR:", even_5_perc)
 ```
 
+**Safer Portfolio**
 ```{r}
 # Now simulate many different possible scenarios when investing
 # over a 4-week (20 trading day) period
 initial_wealth = 100000
 sim_safe_split = foreach(i=1:5000, .combine='rbind') %do% {
   total_wealth = initial_wealth
-  weights = c(0.2, 0.3, 0.5, 0, 0)
+  weights = c(0.2, 0.3, 0.5, 0, 0) # 0.2 SPY, 0.3 TLT, 0.5 LQD
   holdings = weights * total_wealth
   n_days = 20
   wealthtracker = rep(0, n_days)
@@ -98,28 +131,28 @@ sim_safe_split = foreach(i=1:5000, .combine='rbind') %do% {
     holdings = holdings + holdings*return.today
     total_wealth = sum(holdings)
     wealthtracker[today] = total_wealth
+    holdings = total_wealth * weights
   }
   wealthtracker
 }
-hist(sim_safe_split[,n_days]- initial_wealth, breaks=30)
+safe_hist = hist(sim_safe_split[,n_days]- initial_wealth, breaks=30)
 ```
 
 ```{r}
 safe_mean <- mean(sim_safe_split[,n_days])
-safe_return <- (mean(sim_safe_split[,n_days])-100000)/100000
+safe_return <- (mean(sim_safe_split[,n_days])-initial_wealth)/initial_wealth
 safe_5_perc <- quantile(sim_safe_split[,n_days], 0.05) - initial_wealth
 
 # Print out results
-cat("For a portfolio investment of $100,000, split 20% SPY, 30% TLT, and 50% LQD,\nAverage expected result:", safe_mean, "\nAverage return on investment:", safe_return, "\n5% value at risk:", safe_5_perc)
+cat("For an even split investment of $100,000,\nExpected holdings:",safe_mean, "\nReturn Rate:", safe_return, "\n5% VaR:", safe_5_perc)
 ```
 
+**Aggressive Portfolio**
 ```{r}
-# Now simulate many different possible scenarios when investing
-# over a 4-week (20 trading day) period
 initial_wealth = 100000
 sim_risky_split = foreach(i=1:5000, .combine='rbind') %do% {
   total_wealth = initial_wealth
-  weights = c(0, 0, 0, 0.75, 0.25)
+  weights = c(0, 0, 0, 0.7, 0.3) #0.7 EEM, 0.3 VNQ
   holdings = weights * total_wealth
   n_days = 20
   wealthtracker = rep(0, n_days)
@@ -128,18 +161,36 @@ sim_risky_split = foreach(i=1:5000, .combine='rbind') %do% {
     holdings = holdings + holdings*return.today
     total_wealth = sum(holdings)
     wealthtracker[today] = total_wealth
+    holdings = total_wealth * weights
   }
   wealthtracker
 }
-hist(sim_risky_split[,n_days]- initial_wealth, breaks=30)
+risk_hist = hist(sim_risky_split[,n_days]- initial_wealth, breaks=30)
 ```
 
 ```{r}
 risky_mean <- mean(sim_risky_split[,n_days])
-risky_return <- (mean(sim_risky_split[,n_days])-100000)/100000
+risky_return <- (mean(sim_risky_split[,n_days])-initial_wealth)/initial_wealth
 risky_5_perc <- quantile(sim_risky_split[,n_days], 0.05) - initial_wealth
 
 # Print out results
-cat("For a portfolio investment of $100,000, split 75% EEM and 25% VNQ,\nAverage expected result:", risky_mean, "\nAverage return on investment:", risky_return, "\n5% value at risk:", risky_5_perc)
+cat("For an even split investment of $100,000,\nExpected holdings:", risky_mean, "\nReturn Rate:", risky_return, "\n5% VaR:", risky_5_perc)
+```
+
+```{r}
+bucket = list(even = even, safe = safe, risk = risk)
+ggplot(melt(bucket),aes)+ 
+    geom_histogram(data = even, fill = "red", alpha = 0.2) + 
+    geom_histogram(data = safe, fill = "blue", alpha = 0.2) +
+    geom_histogram(data = risk, fill = "green", alpha = 0.2) +
+```
+```{r}
+library(easyGgplot2)
+even = sim_even_split[,n_days]- initial_wealth
+safe = sim_safe_split[,n_days]- initial_wealth
+risk = sim_risky_split[,n_days]- initial_wealth
+ggplot2.histogram(data = c(even,,risk), xName = 'Profit',addMeanLine=TRUE, meanLineColor="blue",meanLineType="dashed")
+#ggplot2.histogram(data = safe, xName = 'Profit',addMeanLine=TRUE, meanLineColor="blue",
+                  #meanLineType="dashed") 
 ```
 

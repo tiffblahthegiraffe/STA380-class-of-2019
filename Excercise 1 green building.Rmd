@@ -45,11 +45,11 @@ Withdraw outliers that leasing rate < 10%
 Maybe add constraint of our observation within age<20 and size <400000 sqare feet
 ```{r}
 mask = gb[!gb$leasing_rate <10,]
-#mask1 = mask[mask$size < 400000,]
-#mask2 = mask1[mask1$age < 20, ]
-mask$green_rating_type[mask$green_rating == 1] <- 'green'
-mask$green_rating_type[mask$green_rating == 0] <- 'not-green'
-mask$green_rating_type = as.factor(mask$green_rating_type)
+mask1 = mask[mask$size < 400000,]
+mask2 = mask1[mask1$age < 20, ]
+mask2$green_rating_type[mask2$green_rating == 1] <- 'green'
+mask2$green_rating_type[mask2$green_rating == 0] <- 'not-green'
+mask2$green_rating_type = as.factor(mask2$green_rating_type)
 ```
 
 ** Plot to see the rent difference**
