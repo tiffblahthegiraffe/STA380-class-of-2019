@@ -1,0 +1,173 @@
+---
+title: 'STA 380 Homework 1: Henry Chang'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Problem 1
+
+## Problem A
+```{r, collapse=TRUE}
+#P(TC|Y) = P(TC|Y) * P(Y) /
+#            ( P(TC|Y) * P(Y) + P(TC|N) * P(N) )
+(0.5/0.65) * 0.65 / ((0.5/0.65) * 0.65 + (0.2/0.35) * 0.35)
+```
+
+
+## Problem B
+The probability of having disease given test positive:
+```{r, collapse=TRUE}
+#D: having disease, ND: not having disease
+#P: getting postivie in the test, N: getting negative in the test
+
+#P(D|P) = P(P|D) * P(D) /
+#            ( P(P|D) * P(D) + P(P|N) * P(N) )
+(0.993) * 0.000025 / ((0.993) * 0.000025 + 0.0001 * 0.999975)
+```
+Problem of the test lies in having too many "False Positive". Which is giving too many positive on tests for those who don't have a desease.
+
+
+
+#Problem 2
+```{r, collapse=TRUE}
+library(corrplot)
+library(ggplot2)
+plot_data = read.csv("STA380/data/greenbuildings.csv")
+#colnames(plot_data)
+re_order_var = c("Rent", "green_rating", "LEED","Energystar", "size", "stories", "class_a",
+ "class_b", "amenities",  "age", "renovated", "cd_total_07", "hd_total07","total_dd_07", "Precipitation","Gas_Costs" , "Electricity_Costs", "net")
+```
+After reading our data into R. I reordered the variables by their categories to make correlation
+plots easier to read. Our new variable list starts with rent, green building certificate, characteristics of a building, weather indicators, ends with energy and other cost.
+
+
+
+## Variable correlation plot
+```{r, collapse=TRUE}
+corrplot(cor(plot_data[re_order_var]), type = "lower")
+```
+The correlations seems reasonable: rent postiviely correlated to good characteristics of a building
+and negatively correlated to worse building conditions and less favorable weather conditions. However, "cluster_rent" provides aggregated information by cluster. Which cannot be included in our correlation plot but provides valuable information.
+
+Therefore, we created varaiable "Rent_adjust" by dividing rent using its cluster's rent. Which tells us the house's rent proportional to the cluster's rent.
+
+
+```{r}
+plot_data["Rent_adjust"] = plot_data["Rent"] / plot_data["cluster_rent"]
+corrplot(cor(plot_data[c("Rent_adjust", re_order_var[-1])]), type = "lower")
+```
+After replacing Rent using "Rent_adjust", we found that correlations between "Rent_adjust" and weather related variables has dissappeared. Which seems to tell us that the effect of weather on rent are reflected on the cluster's rent.
+
+
+
+## Examine rent difference between green and non-green buildings having similar characteristic with our new building.
+
+### After we have studied our variables, we look into information we have on our new building :
+size, age, and stories to help us decide whether we should build a green building.
+
+#### Size
+```{r}
+size_sd = sd(plot_data$size)
+ggplot(plot_data, aes(x = size)) +
+  geom_histogram(binwidth = 10000) +
+  geom_histogram(data=subset(plot_data, green_rating == "1"),binwidth = 10000,fill = "green", alpha = 0.2) +
+  labs( x = "Size in square footage", y ="No of Buildings" ) +
+  geom_vline(aes(xintercept = 250000, color = "My Building")) +
+  geom_vline(aes(xintercept = 250000 + size_sd, color = "upper") , linetype = "dashed") +
+  geom_vline(aes(xintercept = 250000 - size_sd, color = "lower"), linetype = "dashed") +
+  scale_color_manual(name="Used interval", values=c(`My Building` = "red", upper = "orange", lower = "orange"))
+```
+We plot the "size" variable's distribution of our entire data along with the green building's size distribution colored in green. The vertical red line shows the our building's size : 250000. And the orange dash line shows interval of one standard deviation, in which are the data points we are carrying to our boxplot.
+
+```{r}
+size_explore = plot_data[plot_data$size <=  250000 + size_sd, ]
+size_explore = size_explore[size_explore$size >= 250000 - size_sd, ]
+size_explore$green_rating = as.factor(size_explore$green_rating)
+ggplot(size_explore, aes(x = green_rating, y = Rent) ) + 
+  geom_boxplot(fill = c("grey", "green")) + 
+  #scale_y_continuous(limit = c(0, 50)) +  
+  labs(x = "Building", y = "Rent") 
+```
+Using the data points having less than one standard deviation on "size" with our new building, we plotted the rent difference between green and non-green buildings.
+
+```{r}
+size_explore = plot_data[plot_data$size <=  250000 + size_sd, ]
+size_explore = size_explore[size_explore$size >= 250000 - size_sd, ]
+size_explore$green_rating = as.factor(size_explore$green_rating)
+ggplot(size_explore, aes(x = green_rating, y = Rent) ) + 
+  geom_boxplot(fill = c("grey", "green")) + 
+  scale_y_continuous(limit = c(0, 50)) +  # 363 among 6998 have rent > 50
+  labs(x = "Building", y = "Rent") 
+```
+We zoom in our plot by resetting Y limit. We found that 25, 50, 75 rent quantile of green buildings are all higher than non-green buildings.
+
+
+#### Age
+```{r}
+age_sd = sd(plot_data$age)
+ggplot(plot_data, aes(x = age)) +
+  geom_histogram() +
+  geom_histogram(data=subset(plot_data, green_rating == "1"),fill = "green", alpha = 0.2) +
+  labs( x = "House age", y ="No of Buildings" ) +
+  geom_vline(aes(xintercept = 0, color = "My Building"), size = 1) +
+  geom_vline(aes(xintercept = 0 + age_sd, color = "upper") , linetype = "dashed", size = 1) +
+  geom_vline(aes(xintercept = 0 - age_sd, color = "lower"), linetype = "dashed", size = 1) +
+  scale_color_manual(name="Used interval", values=c(`My Building` = "red", 
+                                                    upper = "orange", 
+                                                    lower = "orange"))
+```
+We plot the "age" variable's distribution along with "age"'s distribution among green buildings. We found new buildings (age = 0) only consist of a small portion of our data.
+
+```{r}
+age_explore = plot_data[plot_data$age <=  age_sd, ]
+age_explore$green_rating = as.factor(age_explore$green_rating)
+ggplot(age_explore, aes(x = green_rating, y = Rent)) + 
+      geom_boxplot(fill = c("grey", "green")) + 
+      scale_y_continuous(limit = c(0, 50)) + #173 among 3740 have rent > 50
+      labs(x = "Building", y = "Rent")  
+```
+Green buildings have higher rents in relatively new buildings.
+
+
+####Stories
+```{r}
+stories_sd = sd(plot_data$stories)
+ggplot(plot_data, aes(x = stories)) +
+  geom_histogram() +
+  geom_histogram(data=subset(plot_data, green_rating == "1"),fill = "green", alpha = 0.2) +
+  labs( x = "House stories", y ="No of Buildings" ) +
+  geom_vline(aes(xintercept = 15, color = "My Building"), size = 1) +
+  geom_vline(aes(xintercept = 15 + stories_sd, color = "upper") , linetype = "dashed", size = 1) +
+  geom_vline(aes(xintercept = 15 - stories_sd, color = "lower"), linetype = "dashed", size = 1) +
+  scale_color_manual(name="Used interval", values=c(`My Building` = "red", 
+                                                    upper = "orange", 
+                                                    lower = "orange"))
+
+```
+Under the distribution of "stories", we can see that our new buildings story is around 70 quantile among our data set.
+
+```{r}
+stories_explore = plot_data[plot_data$stories <= 15 + stories_sd, ]
+stories_explore = stories_explore[stories_explore$stories >= 15 - stories_sd, ]
+stories_explore$green_rating = as.factor(stories_explore$green_rating)
+ggplot(stories_explore, aes(x = green_rating, y = Rent)) + 
+  geom_boxplot(fill = c("grey", "green")) + 
+  scale_y_continuous(limit = c(0, 50)) +  #173 among 3740 have rent > 50
+  labs(x = "Building", y = "Rent")  
+```
+Green buildings can bring higher rent in our stories interval.
+
+
+##Validation using regression
+On plots above we obsereved higher rents from green buildings under different condition controled. Before coming up with our final advice, it's always good to check the result of linear regression, which is good at controling variables we consider might affect our rent.
+
+We used Rent_adjust as dependent variable to control the effect from clusters. Then added class_a to control the raised rent from high-quality buildings .
+```{r}
+summary(lm( Rent_adjust ~ log(size) + age + stories+ class_a +green_rating ,
+            data = plot_data))
+```
+Green building provides  3.3% increase on local cluster rent per square foot. (Our building 250,000 square foot, extra cost for green: 5,000,000)
+
