@@ -124,3 +124,4 @@ qplot(scores[,1], scores[,2], color=iris$Species,
 
 # Question 2: how are the principal components related to the original variables?
 pc1$rotation
+# from the rotation summary, we can kind of interpret that setosa iris has narrower sepal width
