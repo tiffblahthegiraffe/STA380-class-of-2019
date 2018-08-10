@@ -32,14 +32,18 @@ head(all_returns)
 ```
 
 ```{r}
-# Plot each versus the other for approximate correlation
-pairs(all_returns)
 # The sample correlation matrix
 cor(all_returns)
+```
+From the correlation plot, we can see that SPY is highly correlated with VNQ and EEM which indicates that emerging-market and real estate relatively more dominant by the market condition. Also, we noticed that TLT is negatively correlated with SPY. This can be explained as when the stock market goes up, people tend to sell treasury bonds to buy stocks, and when it goes down, people buy treasury bonds because they are safe.
+```{r}
+library(GGally)
+ggpairs(as.data.frame(all_returns))+theme_bw()
 ```
 
 From the mean and variance of each ETFs, we can see that EEM, VNQ have relatively higher return, but higher risk consequently.
 Thus, we can then assume EEM and VNQ is a risker investment compare to the other ETFs.
+This is also very intuitive because investing in bonds is less risky than investing in emerging-market or real estate which are both highly volatile.
 ```{r}
 #The mean and variance
 sort(apply(all_returns,2,mean),decreasing = TRUE)
@@ -78,7 +82,7 @@ sim_even_split = foreach(i=1:5000, .combine='rbind') %do% {
 }
 ```
 
-After we boostrap 
+With a even weighted portfolio, we have a 0.8% return and 20-day 5% VaR at -6310.9  
 ```{r}
 even_mean <- mean(sim_even_split[,n_days])
 even_return <- (mean(sim_even_split[,n_days])-initial_wealth)/initial_wealth
@@ -89,7 +93,7 @@ cat("For an even split investment of $100,000,\nExpected holdings:", even_mean, 
 ```
 
 **Safer Portfolio**
-Then, according to the mean and variance analysis of each ETFs, we want to construct a more risk-adverse portfolio by placing more holdings on SPY,TLT, LQD.
+Then, according to the mean and variance analysis of each ETFs, we want to construct a more risk-adverse portfolio by weighted toward the less-volatile ETFs for instance, SPY,TLT and LQD. We decided not to put any weight on EEM and VNQ because accoding to the correlation plot, these two ETF has relatively higher correlation with SPY which is the market index. If we put them in the portfolio, it would not diverse and reduce the risk.
 ```{r}
 # Now simulate many different possible scenarios when investing
 # over a 4-week (20 trading day) period
@@ -112,6 +116,7 @@ sim_safe_split = foreach(i=1:5000, .combine='rbind') %do% {
 #safe_hist = hist(sim_safe_split[,n_days]- initial_wealth, breaks=30)
 ```
 
+With a safer portfolio, we have a lower 20-day 5% VaR at -2874.593, however, this also means a lower return at 0.5%.
 ```{r}
 safe_mean <- mean(sim_safe_split[,n_days])
 safe_return <- (mean(sim_safe_split[,n_days])-initial_wealth)/initial_wealth
@@ -122,7 +127,7 @@ cat("For an safer split investment of $100,000,\nExpected holdings:",safe_mean, 
 ```
 
 **Aggressive Portfolio**
-For the aggressive portfolio, we merely place our initial wealth on the risker investment EEM and VNQ.
+For the aggressive portfolio, we merely place our initial wealth on the risker investment EEM and VNQ. We did not place any holdings on the other ETFs because if we added them in the portfolio, it would diversify the risk and make the portfolio less aggressive.
 ```{r}
 initial_wealth = 100000
 sim_risky_split = foreach(i=1:5000, .combine='rbind') %do% {
@@ -143,6 +148,7 @@ sim_risky_split = foreach(i=1:5000, .combine='rbind') %do% {
 #risk_hist = hist(sim_risky_split[,n_days]- initial_wealth, breaks=30)
 ```
 
+With an aggressive portfolio, we got a 1.44% return but follow by a really high 20-days 5% VaR at -13095.28.
 ```{r}
 risky_mean <- mean(sim_risky_split[,n_days])
 risky_return <- (mean(sim_risky_split[,n_days])-initial_wealth)/initial_wealth
@@ -152,21 +158,24 @@ risky_5_perc <- quantile(sim_risky_split[,n_days], 0.05) - initial_wealth
 cat("For a risky split investment of $100,000,\nExpected holdings:", risky_mean, "\nReturn Rate:", risky_return, "\n5% VaR:", risky_5_perc)
 ```
 
+With the histogram below, again, we prove that portfolio that place higher proportions on ETFs with higher variance could be more volatile. The 'risk' portfolio has more chances of getting higher returns and also more loss. The 'safe' is the lower-volatility portfolio and as expected, it has lower chances of getting big profit or big loss.
 ```{r}
 even = sim_even_split[,n_days]- initial_wealth
 safe = sim_safe_split[,n_days]- initial_wealth
 risk = sim_risky_split[,n_days]- initial_wealth
 
-plot_df = data.frame(even, safe, risk)
+plot_df = data.frame(risk,even, safe)
 
 ggplot(data = plot_df) + 
-    geom_histogram(aes(risk),fill = 'red4',alpha = 0.9,position="stack")+
-    geom_histogram(aes(even),fill = 'salmon1',alpha = 0.6,position="stack") + 
-    geom_histogram(aes(safe),fill = 'olivedrab4',alpha = 0.3,position="stack")+
-    scale_fill_brewer(palette="Spectral")+
+    geom_histogram(aes(risk,color = 'risk'), fill="red4",alpha = 0.9,position="identity")+
+    geom_histogram(aes(even,color = 'even'),fill = 'salmon1',alpha = 0.6,position="identity") + 
+    geom_histogram(aes(safe,color = 'safe'),fill = 'white',alpha = 1.0,position="identity")+
     xlim(c(-25000,60000))+
     xlab('Portfolio Profit/Loss Spread')+
-    ylab('Frequency')
+    ylab('Frequency')+
+    scale_colour_manual("", 
+                      breaks = c("risk", "even", "safe"),
+                      values = c("salmon1", "red4","olivedrab4"))
 ```
 
 **Evaluate Portfolio Performance**
@@ -194,10 +203,12 @@ get_return = function(initial_wealth,weights,all_returns){
 #even = get_return(100000,weight_uni,all_returns)
 ```
 
+Once again, by randomly tuning the weight on those 5 ETFs, we can observe that if placing more holdings on the higher-volatility ETFs, we would expect it to lose more money of the portfolios during the worst 5% of possible 20-day periods.
 ```{r}
+set.seed(1)
 weight = runif(5)
 weight = weight / sum(weight)
-for (i in 1:3){
+for (i in 1:10){
     weight = runif(5)
     weight = weight / sum(weight)
     initial_wealth = 100000
